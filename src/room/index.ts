@@ -48,15 +48,17 @@ export const roomHandler = (socket: Socket) => {
     };
 
     const toggleMicrophone = ({ roomId, peerId }: IRoomParams) => {
-        const user = rooms[roomId][peerId];
-        if (user) {
-            user.microPhoneEnabled = !user.microPhoneEnabled;
-            rooms[roomId][peerId] = user;
-            socket.to(roomId).emit("microphone-toggled", { peerId, microPhoneEnabled: user.microPhoneEnabled });
-            socket.emit("get-users", {
-                roomId,
-                participants: rooms[roomId],
-            });
+        if (Object.values(rooms).length) {
+            const user = rooms[roomId][peerId];
+            if (user) {
+                user.microPhoneEnabled = !user.microPhoneEnabled;
+                rooms[roomId][peerId] = user;
+                socket.to(roomId).emit("microphone-toggled", { peerId, microPhoneEnabled: user.microPhoneEnabled });
+                socket.emit("get-users", {
+                    roomId,
+                    participants: rooms[roomId],
+                });
+            }
         }
     };
 
