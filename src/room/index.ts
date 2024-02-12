@@ -6,6 +6,8 @@ const chats: Record<string, IMessage[]> = {};
 interface IUser {
     peerId: string;
     userName: string;
+    microPhoneEnabled: boolean;
+
 }
 interface IRoomParams {
     roomId: string;
@@ -13,6 +15,7 @@ interface IRoomParams {
 }
 interface IJoinRoomParams extends IRoomParams {
     userName: string;
+    microPhoneEnabled: boolean;
 }
 interface IMessage {
     content: string;
@@ -27,12 +30,12 @@ export const roomHandler = (socket: Socket) => {
         socket.emit("room-created", { roomId });
         console.log("user created the room");
     };
-    const joinRoom = ({ roomId, peerId, userName }: IJoinRoomParams) => {
+    const joinRoom = ({ roomId, peerId, userName, microPhoneEnabled }: IJoinRoomParams) => {
         if (!rooms[roomId]) rooms[roomId] = {};
         console.log("user joined the room", roomId, peerId, userName);
-        rooms[roomId][peerId] = { peerId, userName }
+        rooms[roomId][peerId] = { peerId, userName, microPhoneEnabled }
         socket.join(roomId);
-        socket.to(roomId).emit("user-joined", { peerId, userName });
+        socket.to(roomId).emit("user-joined", { peerId, userName, microPhoneEnabled });
         socket.emit("get-users", {
             roomId,
             participants: rooms[roomId],
@@ -42,6 +45,19 @@ export const roomHandler = (socket: Socket) => {
             console.log("user left the room", peerId);
             leaveRoom({ roomId, peerId });
         });
+    };
+
+    const toggleMicrophone = ({ roomId, peerId }: IRoomParams) => {
+        const user = rooms[roomId][peerId];
+        if (user) {
+            user.microPhoneEnabled = !user.microPhoneEnabled;
+            rooms[roomId][peerId] = user;
+            socket.to(roomId).emit("microphone-toggled", { peerId, microPhoneEnabled: user.microPhoneEnabled });
+            socket.emit("get-users", {
+                roomId,
+                participants: rooms[roomId],
+            });
+        }
     };
 
     const leaveRoom = ({ peerId, roomId }: IRoomParams) => {
@@ -59,7 +75,6 @@ export const roomHandler = (socket: Socket) => {
     };
 
     const addMessage = (roomId: string, message: IMessage) => {
-        console.log({ roomId, message });
         if (chats[roomId]) {
             chats[roomId].push(message);
         } else {
@@ -73,4 +88,5 @@ export const roomHandler = (socket: Socket) => {
     socket.on("start-sharing", startSharing);
     socket.on("stop-sharing", stopSharing);
     socket.on("send-message", addMessage);
+    socket.on("toggle-microphone", toggleMicrophone);
 };
